@@ -51,7 +51,7 @@ def download_media(url, file_name, download_type, quality):
 
             # Delete the file after download button is displayed
             os.remove(downloaded_file_path)
-            st.info(f"Temporary file {downloaded_file_path} has been deleted.")
+            st.info("Temporary file has been deleted.")
     except Exception as e:
         st.error(f"An error occurred: {e}")
 
