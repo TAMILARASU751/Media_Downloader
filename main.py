@@ -75,14 +75,20 @@ if download_type == 'audio':
 else:
     resolution = st.selectbox("Select video resolution (px):", options=["144", "240", "360", "480", "720", "1080", "1440", "2160"])
 
-# Directory picker (For now, Streamlit does not support a native directory picker)
-save_path = st.text_input("Enter the save directory path:")
+# Directory picker: use current working directory as default
+save_path = st.text_input("Enter the save directory path:", value=os.getcwd())
 
 if st.button("Download"):
     if not url:
         st.error("Please enter a URL.")
-    elif not save_path or not os.path.exists(save_path):
-        st.error("Please enter a valid save directory path.")
+    elif not save_path.strip():  # Check if path is empty or whitespace
+        st.error("Please enter a save directory path.")
+    elif not os.path.exists(save_path):  # Check if the path exists
+        try:
+            os.makedirs(save_path)  # Create the directory if it doesn't exist
+            st.warning(f"Directory did not exist. Created new directory at: {save_path}")
+        except Exception as e:
+            st.error(f"Could not create directory: {e}")
     elif not file_name.strip():
         st.error("Please enter a custom file name.")
     else:
