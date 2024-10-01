@@ -3,13 +3,27 @@ import os
 import yt_dlp
 import tempfile
 
-# Function to download audio or video with a progress bar
-def download_media(url, file_name, download_type, quality):
-    # Use the temporary directory for downloads to avoid path issues
-    with tempfile.TemporaryDirectory() as save_path:
+# Function to format file size
+def format_size(size_in_bytes):
+    if size_in_bytes < 1024:
+        return f"{size_in_bytes} B"
+    elif size_in_bytes < 1024 ** 2:
+        return f"{size_in_bytes / 1024:.2f} KB"
+    elif size_in_bytes < 1024 ** 3:
+        return f"{size_in_bytes / (1024 ** 2):.2f} MB"
+    else:
+        return f"{size_in_bytes / (1024 ** 3):.2f} GB"
+
+# Function to download audio or video
+def download_media(url, download_type, quality):
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Use temporary directory as save path
+        file_name = "downloaded_file.mp3" if download_type == 'audio' else "downloaded_file.mp4"
+        save_path = os.path.join(temp_dir, file_name)
+        
         ydl_opts = {
             'format': 'bestaudio/best' if download_type == 'audio' else f'bestvideo[height<={quality}]+bestaudio/best',
-            'outtmpl': os.path.join(save_path, f'{file_name}.{"mp3" if download_type == "audio" else "mp4"}'),
+            'outtmpl': save_path,
             'progress_hooks': [progress_hook],
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
@@ -23,38 +37,57 @@ def download_media(url, file_name, download_type, quality):
                 st.session_state['status_text'].text("Starting download...")
                 ydl.extract_info(url, download=True)
                 
-                # Show success message and provide the download path
-                st.success(f"{download_type.capitalize()} download complete! Saved at {save_path}.")
+                # Provide file for download
+                with open(save_path, "rb") as file:
+                    st.download_button(
+                        label="Download your file",
+                        data=file,
+                        file_name=file_name,
+                        mime="audio/mp3" if download_type == 'audio' else "video/mp4"
+                    )
+                st.success("Download complete! You can download the file using the button above.")
         except Exception as e:
             st.error(f"An error occurred: {e}")
 
-# Sample Streamlit interface for testing
+# Function to handle download progress
+def progress_hook(d):
+    if d['status'] == 'downloading':
+        total_bytes = d.get('total_bytes') or d.get('total_bytes_estimate')
+        downloaded_bytes = d.get('downloaded_bytes', 0)
+
+        if total_bytes is not None:
+            percentage = downloaded_bytes / total_bytes
+            st.session_state['progress_bar'].progress(percentage)
+            st.session_state['status_text'].text(f"Downloaded {format_size(downloaded_bytes)} of {format_size(total_bytes)}")
+
+# Streamlit interface
 st.title("Media Downloader")
+
+# Initialize download progress elements
+if 'progress_bar' not in st.session_state:
+    st.session_state['progress_bar'] = st.empty()
+if 'status_text' not in st.session_state:
+    st.session_state['status_text'] = st.empty()
 
 # URL input field
 url = st.text_input("Enter the URL of the media:", "")
-
-# File name input
-file_name = st.text_input("Enter the custom file name (without extension):", "")
 
 # Download type selection
 download_type = st.radio("Select download type:", ('audio', 'video'))
 
 # Quality input based on type
-if download_type == 'audio':
-    quality = st.selectbox("Select audio quality (kbps):", ["128", "192", "256", "320"])
-else:
-    quality = st.selectbox("Select video resolution (px):", ["144", "240", "360", "480", "720", "1080", "1440", "2160"])
+quality = st.selectbox("Select quality:", ["128", "192", "256", "320"]) if download_type == 'audio' else st.selectbox(
+    "Select resolution:", ["144", "240", "360", "480", "720", "1080", "1440", "2160"]
+)
 
 # Download button
 if st.button("Download"):
-    # Check if all required fields are filled
-    if not url or not file_name:
-        st.error("Please fill in all the fields: URL and file name.")
+    if not url:
+        st.error("Please enter a URL.")
     else:
-        # Clear progress bar and status before starting
+        # Clear previous progress and status
         st.session_state['progress_bar'].progress(0)
         st.session_state['status_text'].text("")
 
-        # Start download with progress
-        download_media(url, file_name, download_type, quality)
+        # Start download
+        download_media(url, download_type, quality)
