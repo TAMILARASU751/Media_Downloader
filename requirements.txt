@@ -1,1 +1,4 @@
-yt_dlp
+streamlit
+yt-dlp
+mutagen
+ffmpeg-python
