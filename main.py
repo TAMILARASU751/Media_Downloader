@@ -52,4 +52,43 @@ def download_media(url, file_name, download_type, quality):
                     )
 
                 # Show the temporary path for user's reference
-                st.info(f"File is temporarily stored at
+                st.info(f"File is temporarily stored at: {save_path}")
+        except Exception as e:
+            st.error(f"An error occurred: {e}")
+
+# Streamlit interface
+st.title("Media Downloader")
+
+# Initialize download progress elements
+if 'progress_bar' not in st.session_state:
+    st.session_state['progress_bar'] = st.empty()
+if 'status_text' not in st.session_state:
+    st.session_state['status_text'] = st.empty()
+
+# URL input field
+url = st.text_input("Enter the URL of the media:", "")
+
+# File name input
+file_name = st.text_input("Enter the custom file name (without extension):", "")
+
+# Download type selection
+download_type = st.radio("Select download type:", ('audio', 'video'))
+
+# Quality input based on type
+if download_type == 'audio':
+    quality = st.selectbox("Select audio quality (kbps):", ["128", "192", "256", "320"])
+else:
+    quality = st.selectbox("Select video resolution (px):", ["144", "240", "360", "480", "720", "1080", "1440", "2160"])
+
+# Download button
+if st.button("Download"):
+    # Check if all required fields are filled
+    if not url or not file_name:
+        st.error("Please fill in all the fields: URL and file name.")
+    else:
+        # Clear progress bar and status before starting
+        st.session_state['progress_bar'].progress(0)
+        st.session_state['status_text'].text("")
+
+        # Start download with progress
+        download_media(url, file_name, download_type, quality)
