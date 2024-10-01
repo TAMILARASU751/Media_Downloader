@@ -13,48 +13,46 @@ def progress_hook(d):
             st.session_state['progress_bar'].progress(percentage)
             st.session_state['status_text'].text(f"Downloaded {downloaded_bytes / 1024:.2f} KB of {total_bytes / 1024:.2f} KB")
 
-# Function to download audio or video
+# Function to download audio or video with error handling
 def download_media(url, file_name, download_type, quality):
-    # Use temporary directory for downloads
-    with tempfile.TemporaryDirectory() as temp_dir:
-        file_extension = "mp3" if download_type == 'audio' else "mp4"
-        file_path = os.path.join(temp_dir, f"{file_name}.{file_extension}")
-        
-        # YDL Options
-        ydl_opts = {
-            'format': 'bestaudio/best' if download_type == 'audio' else f'bestvideo[height<={quality}]+bestaudio/best',
-            'outtmpl': file_path,
-            'progress_hooks': [progress_hook],
-            'postprocessors': [{
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'mp3',
-                'preferredquality': quality,
-            }] if download_type == 'audio' else [],
-        }
-
-        # Download the file
+    # Use a temporary file to store the download
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3' if download_type == 'audio' else '.mp4') as temp_file:
         try:
+            # Get the file path and set options for yt-dlp
+            temp_file_path = temp_file.name
+            ydl_opts = {
+                'format': 'bestaudio/best' if download_type == 'audio' else f'bestvideo[height<={quality}]+bestaudio/best',
+                'outtmpl': temp_file_path,
+                'progress_hooks': [progress_hook],
+                'postprocessors': [{
+                    'key': 'FFmpegExtractAudio',
+                    'preferredcodec': 'mp3',
+                    'preferredquality': quality,
+                }] if download_type == 'audio' else [],
+            }
+
+            # Download using yt-dlp
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 st.session_state['status_text'].text("Starting download...")
                 ydl.extract_info(url, download=True)
 
-                # Show download button after download is complete
-                with open(file_path, "rb") as file:
-                    st.download_button(
-                        label="Download your file",
-                        data=file,
-                        file_name=f"{file_name}.{file_extension}",
-                        mime="audio/mp3" if download_type == 'audio' else "video/mp4"
-                    )
-                st.success(f"Download complete! File saved in temporary storage.")
-                st.info(f"Temporary storage path: {file_path}")
+            # Provide download button after download is complete
+            with open(temp_file_path, "rb") as file:
+                st.download_button(
+                    label="Download your file",
+                    data=file,
+                    file_name=f"{file_name}.{'mp3' if download_type == 'audio' else 'mp4'}",
+                    mime="audio/mp3" if download_type == 'audio' else "video/mp4"
+                )
+            st.success("Download complete! File is ready to download.")
+            st.info(f"File is temporarily stored at: {temp_file_path}")
         except Exception as e:
             st.error(f"An error occurred: {e}")
 
 # Streamlit UI Elements
 st.title("Media Downloader")
 
-# Initialize session state variables
+# Initialize session state variables if not already set
 if 'progress_bar' not in st.session_state:
     st.session_state['progress_bar'] = st.empty()
 if 'status_text' not in st.session_state:
@@ -82,4 +80,3 @@ if st.button("Download"):
 
         # Start download
         download_media(url, file_name, download_type, quality)
-
