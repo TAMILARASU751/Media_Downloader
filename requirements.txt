@@ -1,4 +1,4 @@
 streamlit
 yt-dlp
-mutagen
 ffmpeg-python
+mutagen
