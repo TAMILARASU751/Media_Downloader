@@ -1,7 +1,6 @@
 import streamlit as st
 import os
 import yt_dlp
-from time import sleep
 
 # Function to format file size
 def format_size(size_in_bytes):
@@ -27,6 +26,10 @@ def progress_hook(d):
 
 # Function to download audio or video with a progress bar
 def download_media(url, save_path, file_name, download_type, quality):
+    # Ensure the directory exists, create it if it does not
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
+
     ydl_opts = {
         'format': 'bestaudio/best' if download_type == 'audio' else f'bestvideo[height<={quality}]+bestaudio/best',
         'outtmpl': os.path.join(save_path, f'{file_name}.{"mp3" if download_type == "audio" else "mp4"}'),
@@ -58,8 +61,13 @@ st.title("Media Downloader")
 # URL input field
 url = st.text_input("Enter the URL of the media:", "")
 
-# Directory selection input
-save_path = st.text_input("Enter the directory path to save the file:", "")
+# Directory selection input - set default to a downloads folder in user's home directory
+default_path = os.path.join(os.path.expanduser("~"), "downloads")
+save_path = st.text_input("Enter the directory path to save the file:", default_path)
+
+# Create the directory if it doesn't exist
+if not os.path.exists(save_path):
+    os.makedirs(save_path)
 
 # File name input
 file_name = st.text_input("Enter the custom file name (without extension):", "")
@@ -78,9 +86,6 @@ if st.button("Download"):
     # Check if all required fields are filled
     if not url or not save_path or not file_name:
         st.error("Please fill in all the fields: URL, save path, and file name.")
-    elif not os.path.exists(save_path):
-        # Check if the save path is valid
-        st.error(f"The directory '{save_path}' does not exist. Please enter a valid path.")
     else:
         # Clear progress bar and status before starting
         st.session_state['progress_bar'].progress(0)
