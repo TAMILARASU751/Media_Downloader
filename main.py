@@ -1,6 +1,8 @@
 import streamlit as st
 import os
 import yt_dlp
+from time import sleep
+from pathlib import Path
 
 # Function to format file size
 def format_size(size_in_bytes):
@@ -25,14 +27,11 @@ def progress_hook(d):
             st.session_state['status_text'].text(f"Downloaded {format_size(downloaded_bytes)} of {format_size(total_bytes)}")
 
 # Function to download audio or video with a progress bar
-def download_media(url, save_path, file_name, download_type, quality):
-    # Ensure the directory exists, create it if it does not
-    if not os.path.exists(save_path):
-        os.makedirs(save_path)
-
+def download_media(url, file_name, download_type, quality):
+    temp_save_path = os.path.join(os.getcwd(), f'{file_name}.{"mp3" if download_type == "audio" else "mp4"}')
     ydl_opts = {
         'format': 'bestaudio/best' if download_type == 'audio' else f'bestvideo[height<={quality}]+bestaudio/best',
-        'outtmpl': os.path.join(save_path, f'{file_name}.{"mp3" if download_type == "audio" else "mp4"}'),
+        'outtmpl': temp_save_path,
         'progress_hooks': [progress_hook],
         'postprocessors': [{
             'key': 'FFmpegExtractAudio',
@@ -45,7 +44,17 @@ def download_media(url, save_path, file_name, download_type, quality):
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             st.session_state['status_text'].text("Starting download...")
             ydl.extract_info(url, download=True)
-            st.success(f"{download_type.capitalize()} download complete! Saved at {save_path}.")
+            st.success(f"{download_type.capitalize()} download complete!")
+
+            # Read the file content for browser download
+            with open(temp_save_path, 'rb') as file:
+                st.download_button(
+                    label=f"Download {file_name}",
+                    data=file,
+                    file_name=os.path.basename(temp_save_path),
+                    mime='audio/mpeg' if download_type == 'audio' else 'video/mp4'
+                )
+
     except Exception as e:
         st.error(f"An error occurred: {e}")
 
@@ -60,14 +69,6 @@ st.title("Media Downloader")
 
 # URL input field
 url = st.text_input("Enter the URL of the media:", "")
-
-# Directory selection input - set default to a downloads folder in user's home directory
-default_path = os.path.join(os.path.expanduser("~"), "downloads")
-save_path = st.text_input("Enter the directory path to save the file:", default_path)
-
-# Create the directory if it doesn't exist
-if not os.path.exists(save_path):
-    os.makedirs(save_path)
 
 # File name input
 file_name = st.text_input("Enter the custom file name (without extension):", "")
@@ -84,12 +85,12 @@ else:
 # Download button
 if st.button("Download"):
     # Check if all required fields are filled
-    if not url or not save_path or not file_name:
-        st.error("Please fill in all the fields: URL, save path, and file name.")
+    if not url or not file_name:
+        st.error("Please fill in all the fields: URL and file name.")
     else:
         # Clear progress bar and status before starting
         st.session_state['progress_bar'].progress(0)
         st.session_state['status_text'].text("")
         
-        # Start download with progress
-        download_media(url, save_path, file_name, download_type, quality)
+        # Start download with progress and provide a browser download button
+        download_media(url, file_name, download_type, quality)
