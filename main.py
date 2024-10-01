@@ -1,5 +1,6 @@
 import streamlit as st
 import yt_dlp
+import os
 
 # Function to handle download progress
 def progress_hook(d):
@@ -47,6 +48,10 @@ def download_media(url, file_name, download_type, quality):
                 )
             st.success("Download complete! File is ready to download.")
             st.info(f"File is temporarily stored at: {downloaded_file_path}")
+
+            # Delete the file after download button is displayed
+            os.remove(downloaded_file_path)
+            st.info(f"Temporary file {downloaded_file_path} has been deleted.")
     except Exception as e:
         st.error(f"An error occurred: {e}")
 
